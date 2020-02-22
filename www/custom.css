@@ -1,0 +1,18 @@
+.maintitle {
+  font: 100px 'DevanagariSangamMN-Bold';
+  color: #6cf0b4;
+  text-transform: uppercase;
+  letter-spacing: 5px;
+}
+
+.footer {
+  position: absolute; 
+  bottom: 0; 
+  width: 100%;
+  height: 50px;
+  padding: 10px;
+}
+
+.info {
+  font: 18px 'Verdana';
+}
