@@ -2,13 +2,13 @@
 fluidPage(theme = "custom.css",
             
             mainPanel(width = 12,
-                  uiOutput("landing_ui")),
+                  uiOutput("page_ui")),
           
              tags$footer(
                class = "footer",
-               tags$a("Chris Brownlie", 
+               tags$a("Chris Brownlie,", 
                       href = "https://medium.com/@chris.brownlie"), 
-               ", 2020",
+               " 2020",
                align = "center")
           )
 
