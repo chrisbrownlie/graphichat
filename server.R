@@ -88,7 +88,48 @@ server <- function(input, output, session) {
                 condition = "output.page_status == 'report'",
                 
                 fluidRow(
-                  column(12, p("Report page"))
+                  div(
+                    class = "report-title",
+                    uiOutput("report_title"))
+                ),
+                
+                fluidRow(
+                  div(
+                    uiOutput("card_total_messages")
+                  )
+                ),
+                
+                hr(),
+                
+                fluidRow(
+                  div(class = "table-container",
+                    div(class = "stat-table-title",
+                        "Most Messages Sent"),
+                    div(class = "stat-table",
+                        dataTableOutput("total_messages")
+                        )
+                    ),
+                  div(class = "table-container",
+                    div(class = "stat-table-title",
+                        "Most Images Sent"),
+                    div(class = "stat-table",
+                           dataTableOutput("total_images")
+                         )
+                  ),
+                  div(class = "table-container",
+                    div(class = "stat-table-title",
+                        "Most GIFs Sent"),
+                    div(class = "stat-table",
+                           dataTableOutput("total_gifs")
+                         )
+                  ),
+                  div(class = "table-container",
+                    div(class = "stat-table-title",
+                        "Most Emojis Sent"),
+                    div(class = "stat-table",
+                           dataTableOutput("total_emojis")
+                        )
+                    )
                 ),
                 
                 fluidRow(
@@ -126,16 +167,112 @@ server <- function(input, output, session) {
     if (is.na(file_info$type)) {
       
     } else if (file_info$type == "text/plain") {
+      clean_data <<- clean_dataframe(file_info$path)
+      poss_chatname <<- possible_chat_name(file_info$path)
+      unique_senders <<- isolate(clean_data) %>%
+        select(sender) %>%
+        unique() %>%
+        mutate(align_number = row_number()%%3)
+      print(unique_senders)
       tagList(
         p(style = "font: 14px 'Verdana';color: #19ff34",
           align = "center",
           "Success!"),
         p(align = "center", 
-          "Optionally choose alternative names for the identified senders.")
+          "Optionally choose alternative names and colours for the identified participants."),
+        lapply(seq_along(unique_senders$sender),
+               function(i){
+                 column(width = 4,
+                        height = "50px",
+                        offset = 0,
+                        div(
+                          div(class = "alias-input",
+                   textInput(inputId = paste0("alias_", i),
+                             label = paste0(unique_senders$sender[i], ": "),
+                             value = paste0(unique_senders$sender[i]),
+                             width = "200px")
+                   ),
+                   div(class = "color-input",
+                       colourInput(inputId = paste0("pcp_colour_", i),
+                                   label = "",
+                                   palette = "square",
+                                   value = rep(brewer.pal(8, "Dark2"),10)[i],
+                                   showColour = "background")
+                   )
+                 )
+                 )
+               }),
+        br(),
+        textInput(inputId = "chatname",
+                  label = "Optionally enter a name for the chat/report: ",
+                  value = ifelse(length(unique_senders$sender)>2,
+                                 coalesce(poss_chatname, "My group chat"),
+                                 "My chat"))
       )
     } else {
       p(style = "font: 14px 'Verdana';color: #ff1938",
         align = "center",
         "This does not seem to be a valid .txt file. Please check you uploaded the correct file.")
     }})
+   
+   
+   # Prepare data and graphs for report page
+   aliased_data <- reactiveValues(df = NA,
+                                  stats = NA)
+   observeEvent(input$generate, {
+     alias_lookup <- data.frame(sender = unique_senders$sender, stringsAsFactors = FALSE)
+     for (i in seq_along(alias_lookup$sender)) {
+       alias_lookup$alias[i] <- isolate(input[[paste0("alias_", i)]])
+       alias_lookup$colour[i] <- isolate(input[[paste0("pcp_colour_", i)]])
+     }
+     al_df <- alias_names(clean_data, alias_lookup)
+     aliased_data$df <- al_df
+     aliased_data$stats <- key_stats(clean_df = al_df)
+   })
+   
+   # Reactive objects for report page
+   output$report_title <- renderUI({
+     h5(class = "report-title",
+        input$chatname)
+   })
+   
+   # Headline figures for report
+   output$card_total_messages <- renderUI({
+     num <- sum(aliased_data$stats$total_messages)
+     div(
+       style = "width: 200px",
+       div(class = "figure-card",
+       formatC(num,
+             big.mark = ",",
+             digits = nchar(num))
+       ),
+       div(
+         style = "text-align:center;",
+         p("Total Messages Sent")
+       )
+     )
+   })
+   
+   # Various small tables for 
+   output$total_messages <- renderDataTable({
+     stat_table(aliased_data$stats,
+                total_messages,
+                "Messages Sent")
+   })
+   output$total_images <- renderDataTable({
+     stat_table(aliased_data$stats,
+                total_images,
+                "Images Sent")
+   })
+   output$total_gifs <- renderDataTable({
+     stat_table(aliased_data$stats,
+                total_gifs,
+                "GIFs Sent")
+   })
+   output$total_emojis <- renderDataTable({
+     stat_table(aliased_data$stats,
+                total_emojis,
+                "Emojis Sent")
+   })
+   
 }
