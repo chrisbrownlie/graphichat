@@ -3,7 +3,7 @@ library(shinyjs)
 library(dplyr)
 library(stringr)
 library(lubridate)
-library(shinyWidgets)
+library(colourpicker)
 library(RColorBrewer)
 library(DT)
 
@@ -45,7 +45,7 @@ clean_dataframe <- function(text_file_input_path) {
   # Transform into dataframe for easier use
   raw_df <- data.frame(raw_text = raw_vec2,
                        stringsAsFactors = FALSE) %>%
-    mutate(date = substr(raw_text, 2, 11),
+    mutate(date = dmy(substr(raw_text, 2, 11)),
            time = substr(raw_text, 14, 21),
            stripped_text = substr(raw_text, 23, nchar(raw_text)),
            sender = trimws(str_extract(stripped_text, pattern = "[[:print:]]+?(?=: )")),

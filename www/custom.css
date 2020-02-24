@@ -17,13 +17,6 @@
   color: #000000;
 }
 
-.report-title {
-  font: 50px 'DevanagariSangamMN-Bold';
-  color: #6cf0b4;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
 .color-input {
   width: 10px;
   float: left;
@@ -35,7 +28,27 @@
 }
 
 .report-title {
+  font: 50px 'DevanagariSangamMN-Bold';
+  color: #6cf0b4;
+  text-transform: uppercase;
+  letter-spacing: 2px;
   text-align: center;
+  margin-bottom: 0;
+}
+
+.time-span {
+  font: 20px 'DevanagariSangamMN-Bold';
+  color: #00000;
+  letter-spacing: 0.2px;
+  text-align: center;
+  padding-top: 0;
+}
+
+.card-holder {
+  float: left;
+  border: 2px solid #bdeff0;
+  padding: 10px;
+  margin: 20px;
 }
 
 .figure-card {
@@ -43,7 +56,6 @@
   font-weight: bold;
   text-align: center;
 }
-
 
 .table-container {
   float: left;

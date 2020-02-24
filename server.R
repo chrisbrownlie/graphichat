@@ -89,13 +89,30 @@ server <- function(input, output, session) {
                 
                 fluidRow(
                   div(
-                    class = "report-title",
-                    uiOutput("report_title"))
+                    style = "margin:auto;",
+                    uiOutput("report_title"),
+                    uiOutput("time_span")
+                  )
                 ),
                 
+                br(),
+                br(),
+                
                 fluidRow(
-                  div(
-                    uiOutput("card_total_messages")
+                    div(class = "card-holder",
+                        div(
+                          uiOutput("card_total_messages")
+                        )
+                  ),
+                  div(class = "card-holder",
+                      div(
+                        uiOutput("card_average_messages")
+                      )
+                  ),
+                  div(class = "card-holder",
+                      div(
+                        uiOutput("card_active_days")
+                      )
                   )
                 ),
                 
@@ -235,12 +252,19 @@ server <- function(input, output, session) {
      h5(class = "report-title",
         input$chatname)
    })
+   output$time_span <- renderUI({
+     days <- aliased_data$df$date
+     start <- min(days)
+     end <- max(days)
+     h6(class = "time-span",
+        paste0(format.Date(start, format = "%B %Y"), " - ", format.Date(end, format = "%B %Y")))
+   })
    
    # Headline figures for report
    output$card_total_messages <- renderUI({
      num <- sum(aliased_data$stats$total_messages)
      div(
-       style = "width: 200px",
+       style = "width: 350px",
        div(class = "figure-card",
        formatC(num,
              big.mark = ",",
@@ -249,6 +273,41 @@ server <- function(input, output, session) {
        div(
          style = "text-align:center;",
          p("Total Messages Sent")
+       )
+     )
+   })
+   
+    output$card_average_messages <- renderUI({
+      num <- sum(aliased_data$stats$total_messages)
+     days <- unique(aliased_data$df$date)
+     diff <- max(days)-min(days)
+     avg <- round(num/as.numeric(diff), 2)
+     div(
+       style = "width: 350px",
+       div(class = "figure-card",
+       formatC(avg,
+             big.mark = ",",
+             digits = nchar(avg)),
+       ),
+       div(
+         style = "text-align:center;",
+         p("Average messages per day")
+       )
+     )
+   })
+    
+    output$card_active_days <- renderUI({
+     days <- unique(aliased_data$df$date)
+     diff <- max(days)-min(days)
+     active_pct <- length(days)/as.numeric(diff)
+     div(
+       style = "width: 350px",
+       div(class = "figure-card",
+           paste0(round(active_pct*100,0), "%")
+       ),
+       div(
+         style = "text-align:center;",
+         p("Active Days")
        )
      )
    })
