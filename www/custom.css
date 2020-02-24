@@ -17,6 +17,11 @@
   color: #000000;
 }
 
+.info-note {
+  font: 10px;
+  font-style: italic;
+}
+
 .color-input {
   width: 10px;
   float: left;
@@ -73,4 +78,9 @@
   text-align: center;
   font: 14px 'Verdana';
   font-weight: bold;
+}
+
+.motplot-daterange-opts {
+  width: 350px;
+  float: left;
 }

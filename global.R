@@ -6,6 +6,8 @@ library(lubridate)
 library(colourpicker)
 library(RColorBrewer)
 library(DT)
+library(ggplot2)
+library(ggthemes)
 
 # Get possible chat name
 possible_chat_name <- function(text_file_input_path) {
@@ -100,8 +102,6 @@ key_stats <- function(clean_df) {
   return(sender_totals)
 }
 
-
-
 # Produce stats table
 stat_table <- function(stat_data, column, col_alias) {
   
@@ -121,4 +121,11 @@ stat_table <- function(stat_data, column, col_alias) {
                    target = "row",
                    color = styleEqual(dat$colour, dat$colour))
      return(dt)
+}
+
+# Generate custom smoothed average
+calculate_custom_smooth_average <- function(dataframe) {
+  dataframe <- dataframe %>%
+    mutate(smooth_average = sum(lag(n, 20), lag(n,19), lag(n,18), lag(n,17), lag(n,16), lag(n,15), lag(n,14), lag(n,13), lag(n,12), lag(n,11), lag(n,10), lag(n,9), lag(n,8), lag(n,7), lag(n,6), lag(n,5), lag(n,4), lag(n,3), lag(n,2), lag(n,1), na.rm = T)/20)
+  return(dataframe)
 }

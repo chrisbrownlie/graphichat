@@ -88,15 +88,20 @@ server <- function(input, output, session) {
                 condition = "output.page_status == 'report'",
                 
                 fluidRow(
+                    div(
+                      style = "margin:auto;",
+                    uiOutput("report_title")
+                    )
+                ),
+                fluidRow(
                   div(
-                    style = "margin:auto;",
-                    uiOutput("report_title"),
-                    uiOutput("time_span")
-                  )
+                      style = "position:relative;top:0px;vertical-align:top;",
+                      uiOutput("time_span")
+                    )
                 ),
                 
                 br(),
-                br(),
+                hr(),
                 
                 fluidRow(
                     div(class = "card-holder",
@@ -148,6 +153,39 @@ server <- function(input, output, session) {
                         )
                     )
                 ),
+                
+                hr(),
+                
+                fluidRow(
+                  column(
+                    9,
+                    plotOutput("messages_over_time")
+                  ),
+                  column(
+                    3,
+                    div(
+                    p(class = "info",
+                      "Options for graph:"),
+                    checkboxInput("motplot_split",
+                                  label = "Split by sender?",
+                                  value = FALSE),
+                    dateRangeInput("motplot_date_range",
+                                     label = "Select a date range to zoom on:",
+                                     format = "dd-mm-yyyy",
+                                     weekstart = 1),
+                    checkboxInput("motplot_date_range_flag",
+                                  "Apply zoom",
+                                  value = FALSE),
+                    checkboxInput("motplot_smooth",
+                                  "Show smoothed average?",
+                                  value = FALSE),
+                    br(),
+                    p(style = "font: 10px 'Verdana';font-style:italic;bottom:0px", 
+                      "Please note that some combinations of these options may not work if there are not enough messages in the dataset.")
+                    )
+                  )
+                ),
+                
                 
                 fluidRow(
                   column(4, offset = 4,
@@ -312,7 +350,7 @@ server <- function(input, output, session) {
      )
    })
    
-   # Various small tables for 
+   # Various small tables for key stats
    output$total_messages <- renderDataTable({
      stat_table(aliased_data$stats,
                 total_messages,
@@ -332,6 +370,40 @@ server <- function(input, output, session) {
      stat_table(aliased_data$stats,
                 total_emojis,
                 "Emojis Sent")
+   })
+   
+   # Plot of messages over time, with options
+   output$messages_over_time <- renderPlot({
+     mot <- aliased_data$df %>%
+       count(date)
+     mot_split <- aliased_data$df %>%
+       count(date, sender) %>%
+       group_by(sender)
+     plot_colours <- aliased_data$stats$colour
+     names(plot_colours) <- aliased_data$stats$sender
+     if (input$motplot_split == TRUE) {
+       base_plot <- ggplot(mot_split, aes(x = date)) +
+         geom_line(aes(y = n, color = sender)) +
+         scale_color_manual("Sender", values = plot_colours) +
+         ggtitle("Messages over time, by sender")
+     } else {
+       base_plot <- ggplot(mot, aes(x = date)) +
+         geom_line(aes(y = n), color = "#83fa6b") +
+         ggtitle("Messages over time")
+     }
+     if (input$motplot_date_range_flag == TRUE) {
+       base_plot <- base_plot + 
+         lims(x = c(min(input$motplot_date_range), max(input$motplot_date_range)))
+     }
+     if (input$motplot_smooth == TRUE & input$motplot_split == FALSE) {
+       base_plot <- base_plot + geom_smooth(aes(y = n), se = FALSE, color = "#2176ff")
+     } else if (input$motplot_smooth == TRUE & input$motplot_split == TRUE) {
+       base_plot <- base_plot + geom_smooth(aes(y = n, color = sender), se = FALSE)
+     }
+     base_plot +
+       labs(x = "Date",
+            y = "Number of messages sent") +
+       theme_hc()
    })
    
 }
