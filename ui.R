@@ -12,14 +12,16 @@ tagList(
       uiOutput("page_ui")
       ),
     
+    br(),
+    
     # Footer for referencing
-    tags$footer(
-      class = "footer",
-      br(),
-      p("Created by Chris Brownlie, ",
-      a("repo available on Github", href = "https://www.github.com/chrisbrownlie")),
-      align = "center"
-      )
+    div(
+      style = "margin:auto",
+      p(
+        class = "referencing",
+        "Created by Chris Brownlie, ",
+        a("repo available on Github", href = "https://www.github.com/chrisbrownlie")
+        )
     )
-  
+    )
   )
