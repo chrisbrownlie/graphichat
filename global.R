@@ -8,12 +8,29 @@ library(RColorBrewer)
 library(DT)
 library(ggplot2)
 library(ggthemes)
+library(tidytext)
+library(shinycssloaders)
 
-# Get possible chat name
+# Precautionary: make sure file name for unzipping zip file is available
+if (file.exists("temp/_chat.txt")){
+  file.remove("temp/_chat.txt")
+}
+
+
+# Function definitions ----------
+#' Identify group chat name
+#' 
+#' Get possible chat name from the first message, where relevant
+#' 
+#' @param text_file_input_path location of the .txt file of a whatsapp group chat
+#' 
+#' @return the name of the group chat, if relevant
 possible_chat_name <- function(text_file_input_path) {
+  
   # Read input file
   raw <- readLines(text_file_input_path)
   
+  # Extract name of group from first message
   possible_name <- raw[1] %>%
     str_extract(pattern = "(?<=[[:digit:]]{2}/[[:digit:]]{2}/[[:digit:]]{4}, [[:digit:]]{2}:[[:digit:]]{2}:[[:digit:]]{2}\\])[[:print:]]+(?=: )") %>%
     trimws()
@@ -21,12 +38,19 @@ possible_chat_name <- function(text_file_input_path) {
   return(possible_name)
 }
 
-# Define functions for analysing Whatsapp data
+#' Clean dataframe
+#' 
+#' Data pre-processing function for chat .txt file
+#' 
+#' @param text_file_input_path location of the .txt file of a whatsapp group chat
+#' 
+#' @return a cleaned dataframe, with one row per message and valid information/flags split into separate columns
 clean_dataframe <- function(text_file_input_path) {
   
   # Read input file
   raw <- readLines(text_file_input_path)
   
+  # Basic initial steps, notifying of progress
   cat("\n..Beginning analysis...\n")
   cat("Stripping out non-messages and fixing multi-line messages...\n")
   if (str_detect(raw[1], pattern = "Messages to this (chat|group)( and calls)? are now secured with end-to-end encryption.")) {
@@ -45,6 +69,7 @@ clean_dataframe <- function(text_file_input_path) {
   raw_vec2 <- raw_vec[!is.na(raw_vec)]
   
   # Transform into dataframe for easier use
+  cat("Creating transformed dataframe...\n")
   raw_df <- data.frame(raw_text = raw_vec2,
                        stringsAsFactors = FALSE) %>%
     mutate(date = dmy(substr(raw_text, 2, 11)),
@@ -66,8 +91,18 @@ clean_dataframe <- function(text_file_input_path) {
   return(raw_df)
 }
 
-# Function for aliasing names
+#' Alias names
+#' 
+#' Aliasing names of chat participants
+#' 
+#' @param dataframe a cleaned chat dataframe, as produced by clean_dataframe()
+#' @param alias_df a dataframe of chat participants, their alias (if they have one), 
+#' and the colour assigned to them from the landing page UI
+#' 
+#' @return the original cleaned dataframe, with participant names replaced by aliases
+#' and their colours included
 alias_names <- function(dataframe, alias_df){
+  
   new_dataframe <- dataframe %>%
     left_join(alias_df, by = "sender") %>%
     select(date, 
@@ -80,10 +115,17 @@ alias_names <- function(dataframe, alias_df){
            other_media_flag, 
            emojis, 
            colour)
+  
   return(new_dataframe)
 }
 
-
+#' Key participant stats
+#' 
+#' Produce participant-level statistics for the chat
+#' 
+#' @param clean_df a cleaned chat dataframe as produced by clean_dataframe() (and optionally, alias_names())
+#' 
+#' @return a dataframe with one row per sender and aggregated statistics on their participation in the chat
 key_stats <- function(clean_df) {
   
   sender_totals <- clean_df %>%
@@ -102,30 +144,103 @@ key_stats <- function(clean_df) {
   return(sender_totals)
 }
 
-# Produce stats table
-stat_table <- function(stat_data, column, col_alias) {
+#' Formatting of tables
+#' 
+#' Take in a dataframe and format as a datatable for surfacing in the app
+#' 
+#' @param stat_data a dataframe to be formatted, either the aggregated stat table produced by key_stats(),
+#' or another table to be formatted
+#' @param column the name of a column within the dataframe, for data to be arranged by
+#' @param col_alias the user-friendly name for the column in the output datatable
+#' @param type either 'stat' if the input stat_data object is one created by key_stats(); 'word' if
+#' it is a table created by get_top_n_words(); or 'emojis' if it is a dataframe showing most used emojis
+#' 
+#' @return a DT::datatable object to be surfaced in the app
+stat_table <- function(stat_data, column, col_alias, type = "stat") {
   
+  # Support tidyverse quoting
   column <- enquo(column)
+  
+  # Trim down dataframe and rename, depending on the type of data input
+  if (type == "stat"){
   dat <- stat_data %>%
        arrange(desc(!!column)) %>%
        select("Sender" = sender,
               !!column,
               colour)
   names(dat) <- c("Sender", col_alias, "colour")
+  } else if (type == "words") {
+    dat <- stat_data %>%
+       arrange(desc(!!column)) %>%
+       select("Sender" = sender,
+              word,
+              colour,
+              !!column)
+  names(dat) <- c("Sender", "Word","colour", col_alias)
+  } else if (type == "emojis") {
+    dat <- stat_data %>%
+       arrange(desc(!!column)) %>%
+       select("Sender" = sender,
+              emoji,
+              colour,
+              !!column)
+  names(dat) <- c("Sender", "Emoji","colour", col_alias)
+  }
+  
+  # After ensuring the dataframe is not empty, format as a datatable that can be shown to the user
+  if (nrow(dat)>0) {
      dt <- dat %>%
        datatable(rownames = FALSE,
                  options = list(dom = 't',
                                 ordering = FALSE,
-                                columnDefs = list(list(visible = FALSE, targets = 2)))) %>%
+                                columnDefs = list(list(visible = FALSE, targets = 2), # 'colour' column must be included for formatting but can stay hidden from user
+                                                  list(className = 'dt-right', targets = 1:2),
+                                                  list(className = 'dt-left', targets = 0)))) %>%
        formatStyle("colour",
                    target = "row",
                    color = styleEqual(dat$colour, dat$colour))
      return(dt)
+  }
 }
 
-# Generate custom smoothed average
-calculate_custom_smooth_average <- function(dataframe) {
-  dataframe <- dataframe %>%
-    mutate(smooth_average = sum(lag(n, 20), lag(n,19), lag(n,18), lag(n,17), lag(n,16), lag(n,15), lag(n,14), lag(n,13), lag(n,12), lag(n,11), lag(n,10), lag(n,9), lag(n,8), lag(n,7), lag(n,6), lag(n,5), lag(n,4), lag(n,3), lag(n,2), lag(n,1), na.rm = T)/20)
-  return(dataframe)
+#' Function for extracting most used words for each sender
+#' 
+#' @param data the aliased dataframe
+#' @param n number of words to show
+#' @param stopwords flag for removing stopwords
+#' 
+#' @return dataframe of top n words for each sender
+get_top_n_words <- function(data, n, stopwords, custom_remove, custom_search) {
+  
+  new_data <- data %>%
+    filter(!image_flag,
+           !video_flag,
+           !gif_flag,
+           !other_media_flag) %>%
+    mutate(text = str_replace_all(text, pattern = "/", replacement = " "),
+           text = str_replace_all(tolower(text), pattern = "[[:punct:]]", replacement = "")) %>%
+    unnest_tokens(input = text,
+                  output = "word",
+                  token = "words")
+  if (stopwords) {
+    new_data <- new_data %>%
+      filter(!word %in% tidytext::stop_words$word)
+  }
+  if (custom_remove!="") {
+    custom_removers <- str_split(custom_remove, pattern = "[[:space:][:punct:]]+") %>%
+      unlist()
+    new_data <- new_data %>%
+      filter(!word %in% tolower(custom_removers))
+  }
+  if (custom_search!="") {
+    new_data <- new_data %>%
+      filter(str_detect(word, pattern = custom_search))
+  }
+  new_data <- new_data %>%
+    group_by(sender, colour, word) %>%
+    summarise(num = n()) %>%
+    arrange(desc(num)) %>%
+    group_by(sender) %>%
+    slice(1:n)
+  return(new_data)
 }

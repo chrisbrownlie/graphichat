@@ -1,15 +1,25 @@
-# Define UI
-fluidPage(theme = "custom.css",
-            
-            mainPanel(width = 12,
-                  uiOutput("page_ui")),
-          
-             tags$footer(
-               class = "footer",
-               tags$a("Chris Brownlie,", 
-                      href = "https://medium.com/@chris.brownlie"), 
-               " 2020",
-               align = "center")
-          )
-
-
+# Define UI - mostly defined reactively
+tagList(
+  
+  useShinyjs(),
+  
+  fluidPage(
+    theme = "custom.css",
+    
+    # Main reactive UI defined in server
+    mainPanel(
+      width = 12,
+      uiOutput("page_ui")
+      ),
+    
+    # Footer for referencing
+    tags$footer(
+      class = "footer",
+      br(),
+      p("Created by Chris Brownlie, ",
+      a("repo available on Github", href = "https://www.github.com/chrisbrownlie")),
+      align = "center"
+      )
+    )
+  
+  )
